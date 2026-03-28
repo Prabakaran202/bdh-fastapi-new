@@ -198,61 +198,29 @@ BOLD    = "\033[1m"
 DIM     = "\033[2m"
 RESET   = "\033[0m"
 
-# ── Config ─────────────────────────────────────────────────────────
+# ── BDH AI Generator ───────────────────────────────────────────────
 
-CONFIG_PATH = os.path.expanduser("~/.bdh_fastapi_config.json")
-
-def save_api_key(api_key: str):
-    with open(CONFIG_PATH, "w") as f:
-        json.dump({"groq_api_key": api_key}, f)
-
-def load_api_key():
-    if os.path.exists(CONFIG_PATH):
-        with open(CONFIG_PATH, "r") as f:
-            return json.load(f).get("groq_api_key")
-    return None
-
-# ── AI Generator ───────────────────────────────────────────────────
-
-def generate_with_groq(api_key: str, description: str, project_name: str):
+def generate_from_bdh(description: str):
     print(f"\n{CYAN}AI generating your FastAPI backend...{RESET}\n")
 
-    prompt = f"""You are a FastAPI expert. Generate production-ready FastAPI backend code for: "{description}"
-
-Return ONLY a JSON object (no markdown, no explanation):
-{{
-  "router": "complete router file content",
-  "model": "complete SQLAlchemy model file content",
-  "schema": "complete Pydantic schema file content",
-  "crud": "complete CRUD operations file content",
-  "main_include": "e.g: from app.routers import posts"
-}}"""
-
     payload = json.dumps({
-        "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 3000,
-        "temperature": 0.3
+        "prompt": f"Create a {description}"
     }).encode("utf-8")
 
     req = urllib.request.Request(
-        "https://api.groq.com/openai/v1/chat/completions",
+        "https://ai-api-builder.onrender.com/api/generate",
         data=payload,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        headers={"Content-Type": "application/json"}
     )
 
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=60) as response:
             result = json.loads(response.read().decode("utf-8"))
-            content = result["choices"][0]["message"]["content"].strip()
-            if content.startswith("```"):
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                    content = content[4:]
-            return json.loads(content.strip())
+            api_code = result.get("api_code", "")
+            if api_code:
+                print(f"{GREEN}AI generation successful!{RESET}")
+                return {"generated_main": api_code}
+            return None
     except Exception as e:
         print(f"{RED}AI Error: {e} - using default template{RESET}")
         return None
@@ -261,7 +229,7 @@ Return ONLY a JSON object (no markdown, no explanation):
 
 def banner():
     print(f"""
-{CYAN}{BOLD}  bdh-fastapi-new v2.0{RESET}
+{CYAN}{BOLD}  bdh-fastapi-new v2.1{RESET}
 {DIM}  AI-Powered FastAPI Generator by BackendDeveloperHub{RESET}
 """)
 
@@ -288,20 +256,14 @@ def create_project(project_name: str, ai_mode: bool = False, admin_mode: bool = 
         print(f"{RED}'{project_name}' already exists!{RESET}")
         sys.exit(1)
 
+    # ── AI Mode ──
     ai_data = None
     if ai_mode:
-        api_key = load_api_key()
-        if not api_key:
-            print(f"{YELLOW}Enter Groq API key:{RESET} ", end="")
-            api_key = input().strip()
-            save_api_key(api_key)
-            print(f"{GREEN}API key saved!{RESET}")
-
         print(f"\n{CYAN}Describe your API:{RESET} ", end="")
         description = input().strip()
 
         if description:
-            ai_data = generate_with_groq(api_key, description, project_name)
+            ai_data = generate_from_bdh(description)
 
     print(f"{BOLD}Creating: {CYAN}{project_name}{RESET}\n")
 
@@ -312,14 +274,23 @@ def create_project(project_name: str, ai_mode: bool = False, admin_mode: bool = 
         f"{project_name}/app/crud",
     ]
 
-    router_name    = "generated" if ai_data else "users"
-    router_content = ai_data.get("router", USERS_ROUTER) if ai_data else USERS_ROUTER
-    model_content  = ai_data.get("model", USER_MODEL) if ai_data else USER_MODEL
-    schema_content = ai_data.get("schema", USER_SCHEMA) if ai_data else USER_SCHEMA
-    crud_content   = ai_data.get("crud", USER_CRUD) if ai_data else USER_CRUD
-    main_content   = MAIN_PY_ADMIN if admin_mode else MAIN_PY
-    req_content    = REQUIREMENTS_ADMIN if admin_mode else REQUIREMENTS
-    admin_line     = "- GET /admin -> Admin Panel" if admin_mode else ""
+    # ── File Contents ──
+    router_name    = "users"
+    router_content = USERS_ROUTER
+    model_content  = USER_MODEL
+    schema_content = USER_SCHEMA
+    crud_content   = USER_CRUD
+
+    # AI generated main.py use பண்ணு
+    if ai_data and ai_data.get("generated_main"):
+        main_content = ai_data["generated_main"]
+    elif admin_mode:
+        main_content = MAIN_PY_ADMIN
+    else:
+        main_content = MAIN_PY
+
+    req_content = REQUIREMENTS_ADMIN if admin_mode else REQUIREMENTS
+    admin_line  = "- GET /admin -> Admin Panel" if admin_mode else ""
 
     files = {
         f"{project_name}/app/__init__.py": "",
@@ -383,15 +354,8 @@ def main():
     parser.add_argument("project_name", help="Project name")
     parser.add_argument("--ai", action="store_true", help="AI-powered code generation")
     parser.add_argument("--admin", action="store_true", help="Include SQLAdmin panel")
-    parser.add_argument("--config", metavar="API_KEY", help="Save Groq API key")
 
     args = parser.parse_args()
-
-    if args.config:
-        save_api_key(args.config)
-        print(f"{GREEN}Groq API key saved!{RESET}")
-        return
-
     create_project(args.project_name, ai_mode=args.ai, admin_mode=args.admin)
 
 if __name__ == "__main__":
