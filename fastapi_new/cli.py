@@ -5,6 +5,142 @@ import urllib.request
 import urllib.error
 import json
 
+
+# ... (Previous Boilerplate Content remains the same) ...
+
+# ── New Frontend (TK) Boilerplate ──────────────────────────────────
+
+INDEX_HTML = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{project_name} - Frontend</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <h1>Welcome to {project_name}</h1>
+        <p>Status: <span id="status">Connecting...</span></p>
+        <div id="user-list"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
+'''
+
+STYLE_CSS = '''body {
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f4f4f9;
+}
+#app {
+    text-align: center;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+'''
+
+SCRIPT_JS = '''async function fetchData() {
+    try {
+        const response = await fetch('http://localhost:8000/');
+        const data = await response.json();
+        document.getElementById('status').innerText = data.message;
+    } catch (err) {
+        document.getElementById('status').innerText = 'Backend Offline';
+    }
+}
+fetchData();
+'''
+
+# ── Colors ─────────────────────────────────────────────────────────
+CYAN    = "\033[96m"
+GREEN   = "\033[92m"
+YELLOW  = "\033[93m"
+RED     = "\033[91m"
+BOLD    = "\033[1m"
+DIM     = "\033[2m"
+RESET   = "\033[0m"
+
+# ── Updated Functions ──────────────────────────────────────────────
+
+def print_tree(project_name, admin_mode=False, fd_mode=False):
+    print(f"\n{CYAN}  {project_name}/{RESET}")
+    print(f"  {CYAN}  app/{RESET}")
+    print(f"  {GREEN}    main.py{RESET}")
+    if fd_mode:
+        print(f"  {CYAN}  frontend/{RESET}")
+        print(f"  {GREEN}    index.html{RESET}")
+        print(f"  {GREEN}    style.css{RESET}")
+        print(f"  {GREEN}    script.js{RESET}")
+    # ... rest of tree ...
+
+def create_project(project_name: str, ai_mode: bool = False, admin_mode: bool = False, fd_mode: bool = False):
+    # (Banner and AI logic stays the same)
+    
+    if os.path.exists(project_name):
+        print(f"{RED}'{project_name}' already exists!{RESET}")
+        sys.exit(1)
+
+    folders = [
+        f"{project_name}/app/routers",
+        f"{project_name}/app/models",
+        f"{project_name}/app/schemas",
+        f"{project_name}/app/crud",
+    ]
+
+    if fd_mode:
+        folders.append(f"{project_name}/frontend")
+
+    # Define standard files
+    router_name = "users"
+    files = {
+        f"{project_name}/app/__init__.py": "",
+        f"{project_name}/app/main.py": MAIN_PY_ADMIN if admin_mode else MAIN_PY,
+        f"{project_name}/app/database.py": DATABASE_PY,
+        f"{project_name}/app/routers/{router_name}.py": USERS_ROUTER,
+        f"{project_name}/.env": ENV_FILE,
+        f"{project_name}/requirements.txt": REQUIREMENTS_ADMIN if admin_mode else REQUIREMENTS,
+    }
+
+    # Add Frontend files if -fd is used
+    if fd_mode:
+        files[f"{project_name}/frontend/index.html"] = INDEX_HTML.format(project_name=project_name)
+        files[f"{project_name}/frontend/style.css"] = STYLE_CSS
+        files[f"{project_name}/frontend/script.js"] = SCRIPT_JS
+
+    if admin_mode:
+        files[f"{project_name}/app/admin.py"] = ADMIN_PY
+
+    # Create directories and write files
+    for folder in folders:
+        os.makedirs(folder, exist_ok=True)
+
+    for filepath, content in files.items():
+        with open(filepath, "w") as f:
+            f.write(content)
+
+    print(f"{GREEN}{BOLD}Project '{project_name}' created successfully with --fd frontend!{RESET}")
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="bdh-fastapi-new",
+        description="AI-Powered FastAPI Generator"
+    )
+    parser.add_argument("project_name", help="Project name")
+    parser.add_argument("--ai", action="store_true", help="AI-powered code generation")
+    parser.add_argument("--admin", action="store_true", help="Include SQLAdmin panel")
+    # Adding the --tk flag here
+    parser.add_argument("--fd", action="store_true", help="Include Frontend toolkit structure")
+
+    args = parser.parse_args()
+    create_project(args.project_name, ai_mode=args.ai, admin_mode=args.admin, fd_mode=args.tk)
+
 # ── Boilerplate Content ─────────────────────────────────────────────
 
 MAIN_PY = '''from fastapi import FastAPI
