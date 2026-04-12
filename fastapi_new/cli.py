@@ -127,19 +127,8 @@ def create_project(project_name: str, ai_mode: bool = False, admin_mode: bool = 
 
     print(f"{GREEN}{BOLD}Project '{project_name}' created successfully with --fd frontend!{RESET}")
 
-def main():
-    parser = argparse.ArgumentParser(
-        prog="bdh-fastapi-new",
-        description="AI-Powered FastAPI Generator"
-    )
-    parser.add_argument("project_name", help="Project name")
-    parser.add_argument("--ai", action="store_true", help="AI-powered code generation")
-    parser.add_argument("--admin", action="store_true", help="Include SQLAdmin panel")
-    # Adding the --tk flag here
-    parser.add_argument("--fd", action="store_true", help="Include Frontend toolkit structure")
 
-    args = parser.parse_args()
-    create_project(args.project_name, ai_mode=args.ai, admin_mode=args.admin, fd_mode=args.tk)
+   
 
 # ── Boilerplate Content ─────────────────────────────────────────────
 
@@ -510,9 +499,10 @@ def main():
     parser.add_argument("project_name", help="Project name")
     parser.add_argument("--ai", action="store_true", help="AI-powered code generation")
     parser.add_argument("--admin", action="store_true", help="Include SQLAdmin panel")
+    parser.add_argument("--fd", action="store_true", help="Include Frontend toolkit structure")
 
     args = parser.parse_args()
-    create_project(args.project_name, ai_mode=args.ai, admin_mode=args.admin)
+    create_project(args.project_name, ai_mode=args.ai, admin_mode=args.admin,fd_mode=args.fd)
 
 if __name__ == "__main__":
     main()
